@@ -3,7 +3,7 @@
 ## Meeting memo
 1st meeting (11.3):
 
-	0. Create a shared GitHub repo
+	0. Created a shared GitHub repo
 
 	1. Selected three datasets:  
 		PneumoniaMNIST 	(1k+, G)  
