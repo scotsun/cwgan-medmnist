@@ -8,7 +8,7 @@
 	1. Selected three datasets:  
 		PneumoniaMNIST 	(1k+, G)  
 		OrganAMNIST 	(50k+, G)  
-		BloodMNIST 		(10k+, C)
+		BloodMNIST		(10k+, C)
 
 	2. Planned a timeline for the project:  
 		11.17 GAN,  
