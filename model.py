@@ -147,7 +147,7 @@ class DCGAN(object):
                     f"Discriminator loss is too small or generator loss is too high at epoch:{epoch}, which indicate a potential saturation problem."
                 )
                 print("Now, re-initialize and re-train...")
-                self.__init__(self.epochs, self.lr)
+                self.__init__(self.epochs, self.lr, self.device)
                 self.train(train_loader)
                 return
         return
