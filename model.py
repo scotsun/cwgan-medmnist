@@ -166,14 +166,11 @@ class DCGAN(object):
 
 
 class CondGenerator(torch.nn.Module):
-    """Conditional Generator."""
-
     def __init__(self, num_class, embedding_dim, latent_dim):
         super().__init__()
         self.label_embeddings = nn.Sequential(
             nn.Embedding(num_class, embedding_dim),
             nn.Linear(embedding_dim, 1 * 7 * 7),
-            nn.ReLU(),
         )
         self.latent_noise = nn.Sequential(
             nn.Linear(latent_dim, 255 * 7 * 7),
@@ -203,8 +200,6 @@ class CondGenerator(torch.nn.Module):
 
 
 class CondDiscriminator(torch.nn.Module):
-    """Conditional Discriminator."""
-
     def __init__(self, num_class, embedding_dim, channel_dim):
         super().__init__()
         self.label_embeddings = nn.Sequential(
@@ -333,7 +328,7 @@ class CDCGAN(object):
                         d_loss=float(total_d_loss / num_batches),
                         g_loss=float(total_g_loss / num_batches),
                     )
-            if total_d_loss / num_batches < 1e-5 or total_g_loss / num_batches > 10:
+            if total_d_loss / num_batches < 1e-3 or total_g_loss / num_batches > 8:
                 print(
                     f"Discriminator loss is too small and generator loss is too high at epoch:{epoch}, which indicate a potential saturation problem."
                 )
@@ -347,7 +342,7 @@ class CDCGAN(object):
                     self.lr,
                     self.device,
                 )
-                self.train(train_loader)
+                self.train(train_loader, verbose_period=verbose_period)
                 return
         return
 
