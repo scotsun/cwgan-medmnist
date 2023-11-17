@@ -2,13 +2,14 @@
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from tqdm import tqdm
 
 
 def weights_init(m):
     """Initialize parameters/weights in GAN."""
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-        nn.init.normal_(m.weight.data, 0.0, 0.01)
+        nn.init.normal_(m.weight.data, 0.0, 0.02)
     elif isinstance(m, nn.BatchNorm2d):
         nn.init.normal_(m.weight.data, 1.0, 0.02)
         nn.init.constant_(m.bias.data, 0)
@@ -169,13 +170,17 @@ class DCGAN(object):
 
 
 class CondGenerator(torch.nn.Module):
-    def __init__(self, num_class, embedding_dim, latent_dim):
+    def __init__(self, num_class, latent_dim, embedding_dim, one_hot_encoding):
         super().__init__()
         self.num_class = num_class
-        self.embedding_dim = embedding_dim
         self.latent_dim = latent_dim
+        if one_hot_encoding:
+            self.embedding_dim = num_class
+        else:
+            self.embedding_dim = embedding_dim
+            self.label_embedding = nn.Embedding(num_class, embedding_dim)
+        self.one_hot_encoding = one_hot_encoding
 
-        self.label_embedding = nn.Embedding(num_class, embedding_dim)
         self.label_channel = nn.Sequential(
             nn.ConvTranspose2d(
                 in_channels=embedding_dim,
@@ -195,6 +200,8 @@ class CondGenerator(torch.nn.Module):
                 stride=1,
                 bias=False,
             ),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
         )
         self.G = nn.Sequential(
             nn.ConvTranspose2d(
@@ -216,9 +223,11 @@ class CondGenerator(torch.nn.Module):
     def forward(self, z, y):
         """The forward function should return batch of images."""
         z = z.reshape(-1, self.latent_dim, 1, 1)
-        y = self.label_channel(
-            self.label_embedding(y).reshape(-1, self.embedding_dim, 1, 1)
-        )
+        if self.one_hot_encoding:
+            y = F.one_hot(y, num_classes=self.num_class).float()
+        else:
+            y = self.label_embedding(y)
+        y = self.label_channel(y.reshape(-1, self.embedding_dim, 1, 1))
         z = self.noise_channel(z)
         x = torch.cat((z, y), dim=1)
         x = self.G(x)
@@ -226,13 +235,17 @@ class CondGenerator(torch.nn.Module):
 
 
 class CondDiscriminator(torch.nn.Module):
-    def __init__(self, num_class, embedding_dim, channel_dim):
+    def __init__(self, num_class, channel_dim, embedding_dim, one_hot_encoding):
         super().__init__()
         self.num_class = num_class
-        self.embedding_dim = embedding_dim
         self.channel_dim = channel_dim
+        if one_hot_encoding:
+            self.embedding_dim = num_class
+        else:
+            self.embedding_dim = embedding_dim
+            self.label_embedding = nn.Embedding(num_class, embedding_dim)
+        self.one_hot_encoding = one_hot_encoding
 
-        self.label_embedding = nn.Embedding(num_class, embedding_dim)
         self.label_channel = nn.Sequential(
             nn.Conv2d(
                 in_channels=embedding_dim,
@@ -240,7 +253,8 @@ class CondDiscriminator(torch.nn.Module):
                 kernel_size=4,
                 stride=2,
                 padding=1,
-            )
+            ),
+            nn.LeakyReLU(0.2),
         )
         self.img_channel = nn.Sequential(
             nn.Conv2d(
@@ -289,7 +303,10 @@ class CondDiscriminator(torch.nn.Module):
 
     def forward(self, x, y):
         """The forward function should return the scores."""
-        y = self.label_embedding(y)
+        if self.one_hot_encoding:
+            y = F.one_hot(y, num_classes=self.num_class).float()
+        else:
+            y = self.label_embedding(y)
         y = y[:, :, None, None].repeat(1, 1, 28, 28)
         y = self.label_channel(y)
         x = self.img_channel(x)
@@ -300,15 +317,23 @@ class CondDiscriminator(torch.nn.Module):
 
 class CDCGAN(object):
     def __init__(
-        self, num_class, embedding_dim, channel_dim, latent_dim, epochs, lr, device
+        self,
+        num_class,
+        channel_dim,
+        latent_dim,
+        embedding_dim,
+        one_hot_encoding,
+        epochs,
+        lr,
+        device,
     ):
         self.G = (
-            CondGenerator(num_class, embedding_dim, latent_dim)
+            CondGenerator(num_class, latent_dim, embedding_dim, one_hot_encoding)
             .apply(weights_init)
             .to(device)
         )
         self.D = (
-            CondDiscriminator(num_class, embedding_dim, channel_dim)
+            CondDiscriminator(num_class, channel_dim, embedding_dim, one_hot_encoding)
             .apply(weights_init)
             .to(device)
         )
@@ -322,6 +347,7 @@ class CDCGAN(object):
         )
 
         self.num_class = num_class
+        self.one_hot_encoding = one_hot_encoding
         self.embedding_dim = embedding_dim
         self.channel_dim = channel_dim
         self.latent_dim = latent_dim
@@ -393,14 +419,16 @@ class CDCGAN(object):
                     )
             if total_d_loss / num_batches < 1e-3 or total_g_loss / num_batches > 8:
                 print(
-                    f"Discriminator loss is too small and generator loss is too high at epoch:{epoch}, which indicate a potential saturation problem."
+                    f"Discriminator loss is too small and generator loss is too high at epoch:{epoch}, "
+                    + "which indicate a potential saturation problem."
                 )
                 print("Now, re-initialize and re-train...")
                 self.__init__(
                     self.num_class,
-                    self.embedding_dim,
                     self.channel_dim,
                     self.latent_dim,
+                    self.embedding_dim,
+                    self.one_hot_encoding,
                     self.epochs,
                     self.lr,
                     self.device,
