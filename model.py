@@ -8,7 +8,10 @@ from tqdm import tqdm
 def weights_init(m):
     """Initialize parameters/weights in GAN."""
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
-        torch.nn.init.normal_(m.weight, mean=0.0, std=0.001)
+        nn.init.normal_(m.weight.data, 0.0, 0.01)
+    elif isinstance(m, nn.BatchNorm2d):
+        nn.init.normal_(m.weight.data, 1.0, 0.02)
+        nn.init.constant_(m.bias.data, 0)
     return
 
 
@@ -168,32 +171,55 @@ class DCGAN(object):
 class CondGenerator(torch.nn.Module):
     def __init__(self, num_class, embedding_dim, latent_dim):
         super().__init__()
-        self.label_embeddings = nn.Sequential(
-            nn.Embedding(num_class, embedding_dim),
-            nn.Linear(embedding_dim, 1 * 7 * 7),
-        )
-        self.latent_noise = nn.Sequential(
-            nn.Linear(latent_dim, 255 * 7 * 7),
-            nn.ReLU(),
-        )
-        self.G = nn.Sequential(
-            nn.ConvTranspose2d(256, 128, 4, 2, 1),
+        self.num_class = num_class
+        self.embedding_dim = embedding_dim
+        self.latent_dim = latent_dim
+
+        self.label_embedding = nn.Embedding(num_class, embedding_dim)
+        self.label_channel = nn.Sequential(
+            nn.ConvTranspose2d(
+                in_channels=embedding_dim,
+                out_channels=128,
+                kernel_size=3,
+                stride=1,
+                bias=False,
+            ),
             nn.BatchNorm2d(128),
             nn.ReLU(),
-            nn.ConvTranspose2d(128, 64, 4, 2, 1),
+        )
+        self.noise_channel = nn.Sequential(
+            nn.ConvTranspose2d(
+                in_channels=latent_dim,
+                out_channels=128,
+                kernel_size=3,
+                stride=1,
+                bias=False,
+            ),
+        )
+        self.G = nn.Sequential(
+            nn.ConvTranspose2d(
+                in_channels=256, out_channels=128, kernel_size=3, stride=2, padding=0
+            ),
+            nn.BatchNorm2d(128),
+            nn.ReLU(),
+            nn.ConvTranspose2d(
+                in_channels=128, out_channels=64, kernel_size=4, stride=2, padding=1
+            ),
             nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.ConvTranspose2d(64, 32, 1, 1),
-            nn.BatchNorm2d(32),
-            nn.ReLU(),
-            nn.ConvTranspose2d(32, 1, 1, 1),
+            nn.ConvTranspose2d(
+                in_channels=64, out_channels=1, kernel_size=4, stride=2, padding=1
+            ),
             nn.Tanh(),
         )
 
     def forward(self, z, y):
         """The forward function should return batch of images."""
-        z = self.latent_noise(z).reshape(-1, 255, 7, 7)
-        y = self.label_embeddings(y).reshape(-1, 1, 7, 7)
+        z = z.reshape(-1, self.latent_dim, 1, 1)
+        y = self.label_channel(
+            self.label_embedding(y).reshape(-1, self.embedding_dim, 1, 1)
+        )
+        z = self.noise_channel(z)
         x = torch.cat((z, y), dim=1)
         x = self.G(x)
         return x
@@ -202,34 +228,71 @@ class CondGenerator(torch.nn.Module):
 class CondDiscriminator(torch.nn.Module):
     def __init__(self, num_class, embedding_dim, channel_dim):
         super().__init__()
-        self.label_embeddings = nn.Sequential(
-            nn.Embedding(num_class, embedding_dim),
-            nn.Linear(embedding_dim, channel_dim * 28 * 28),
-            nn.ReLU(),
+        self.num_class = num_class
+        self.embedding_dim = embedding_dim
+        self.channel_dim = channel_dim
+
+        self.label_embedding = nn.Embedding(num_class, embedding_dim)
+        self.label_channel = nn.Sequential(
+            nn.Conv2d(
+                in_channels=embedding_dim,
+                out_channels=32,
+                kernel_size=4,
+                stride=2,
+                padding=1,
+            )
+        )
+        self.img_channel = nn.Sequential(
+            nn.Conv2d(
+                in_channels=channel_dim,
+                out_channels=32,
+                kernel_size=4,
+                stride=2,
+                padding=1,
+                bias=False,
+            ),
+            nn.LeakyReLU(0.2),
         )
         self.D = nn.Sequential(
             # half of the channels comes from the image, and the other half is from the label
-            nn.Conv2d(2 * channel_dim, 64, 3, 2, 1),
-            nn.BatchNorm2d(64),
-            nn.LeakyReLU(0.2),
-            nn.Conv2d(64, 128, 3, 2, 1),
+            nn.Conv2d(
+                in_channels=64,
+                out_channels=128,
+                kernel_size=4,
+                stride=2,
+                padding=1,
+                bias=False,
+            ),
             nn.BatchNorm2d(128),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(128, 256, 3, 2, 1),
+            nn.Conv2d(
+                in_channels=128,
+                out_channels=256,
+                kernel_size=3,
+                stride=2,
+                padding=0,
+                bias=False,
+            ),
             nn.BatchNorm2d(256),
             nn.LeakyReLU(0.2),
-            nn.Conv2d(256, 512, 1, 1),
-            nn.BatchNorm2d(512),
-            nn.LeakyReLU(0.2),
+            nn.Conv2d(
+                in_channels=256,
+                out_channels=1,
+                kernel_size=3,
+                stride=1,
+                padding=0,
+                bias=False,
+            ),
             nn.Flatten(),
-            nn.Linear(512 * 4 * 4, 1),
             nn.Sigmoid(),
         )
-        self.channel_dim = channel_dim
 
     def forward(self, x, y):
         """The forward function should return the scores."""
-        y = self.label_embeddings(y).reshape(-1, self.channel_dim, 28, 28)
+        y = self.label_embedding(y)
+        y = y[:, :, None, None].repeat(1, 1, 28, 28)
+        y = self.label_channel(y)
+        x = self.img_channel(x)
         x = torch.concat((x, y), dim=1)
         p = self.D(x)
         return p
@@ -346,10 +409,12 @@ class CDCGAN(object):
                 return
         return
 
-    def generate_img(self, number_of_images, class_label):
+    def generate_img(self, number_of_images, class_label, randomness=0.1):
         samples = (
             self.G(
-                torch.randn((number_of_images, self.latent_dim)).to(self.device),
+                (randomness * torch.randn((number_of_images, self.latent_dim))).to(
+                    self.device
+                ),
                 (class_label * torch.ones(number_of_images)).long().to(self.device),
             )
             .detach()
