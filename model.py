@@ -17,6 +17,11 @@ def weights_init(m):
 
 
 class CondGenerator(torch.nn.Module):
+    """Conditional Generator.
+
+    Vanilla DCGAN generator architecture.
+    """
+
     def __init__(
         self, num_class, channel_dim, latent_dim, embedding_dim, one_hot_encoding
     ):
@@ -74,7 +79,10 @@ class CondGenerator(torch.nn.Module):
         )
 
     def forward(self, z, y):
-        """The forward function should return batch of images."""
+        """The forward function should return batch of images.
+
+        Concatenate one-hot/embedding representation of the label and latent noise. Generate/enrich images from the combination.
+        """
         z = z.reshape(-1, self.latent_dim, 1, 1)
         if self.one_hot_encoding:
             y = F.one_hot(y, num_classes=self.num_class).float()
@@ -88,6 +96,11 @@ class CondGenerator(torch.nn.Module):
 
 
 class CondDiscriminator(torch.nn.Module):
+    """Conditional Discriminator.
+
+    Vanilla DCGAN discriminator architecture.
+    """
+
     def __init__(self, num_class, channel_dim, embedding_dim, one_hot_encoding):
         super().__init__()
         self.num_class = num_class
@@ -155,7 +168,10 @@ class CondDiscriminator(torch.nn.Module):
         )
 
     def forward(self, x, y):
-        """The forward function should return the scores."""
+        """The forward function should return the scores.
+
+        Enrich the one-hot/embedding representation of the label to constant tensor with layers/channels.
+        """
         if self.one_hot_encoding:
             y = F.one_hot(y, num_classes=self.num_class).float()
         else:
@@ -296,6 +312,7 @@ class CDCGAN(object):
         return
 
     def generate_img(self, number_of_images, class_label, channel_dim):
+        """Generate images from noise and class label."""
         samples = (
             self.G(
                 torch.randn((number_of_images, self.latent_dim)).to(self.device),
@@ -310,13 +327,16 @@ class CDCGAN(object):
 
 
 def gradient_penalty(D, real_images, image_labels, fake_images, device):
-    """Computes the gradient penalty loss for WGAN."""
+    """Compute the gradient penalty loss for WGAN.
+
+    L2 Regularize/penalize discriminator's weight gradients L2 norm being greater than 1.
+    """
     N, C, H, W = real_images.shape
     alpha = torch.randn((N, 1, 1, 1)).repeat(1, C, H, W).to(device)
-    # get X_hat
+    # get X_hat, the interpolation between real samples and fake samples
     interpolated_images = real_images * alpha + fake_images * (1 - alpha)
     interpolated_scores = D(interpolated_images, image_labels)
-    # get the gradient D(X_hat)
+    # get the grad D(X_hat)
     gradients = torch.autograd.grad(
         inputs=interpolated_images,
         outputs=interpolated_scores,
@@ -331,6 +351,11 @@ def gradient_penalty(D, real_images, image_labels, fake_images, device):
 
 
 class CondWGenerator(torch.nn.Module):
+    """Conditional Generator (same as CondGenerator).
+
+    DCGAN generator architecture.
+    """
+
     def __init__(
         self, num_class, channel_dim, latent_dim, embedding_dim, one_hot_encoding
     ):
@@ -402,6 +427,11 @@ class CondWGenerator(torch.nn.Module):
 
 
 class CondWDiscriminator(torch.nn.Module):
+    """Conditional Discriminator.
+
+    Wassertein DCGAN discriminator architecture. Sigmoid removed.
+    """
+
     def __init__(self, num_class, channel_dim, embedding_dim, one_hot_encoding):
         super().__init__()
         self.num_class = num_class
@@ -601,6 +631,7 @@ class CWDCGAN(object):
         return
 
     def generate_img(self, number_of_images, class_label, channel_dim):
+        """Generate images from noise and class label."""
         samples = (
             self.G(
                 torch.randn((number_of_images, self.latent_dim)).to(self.device),
