@@ -17,7 +17,9 @@ def weights_init(m):
 
 
 class CondGenerator(torch.nn.Module):
-    def __init__(self, num_class, latent_dim, embedding_dim, one_hot_encoding):
+    def __init__(
+        self, num_class, channel_dim, latent_dim, embedding_dim, one_hot_encoding
+    ):
         super().__init__()
         self.num_class = num_class
         self.latent_dim = latent_dim
@@ -62,7 +64,11 @@ class CondGenerator(torch.nn.Module):
             nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.ConvTranspose2d(
-                in_channels=64, out_channels=1, kernel_size=4, stride=2, padding=1
+                in_channels=64,
+                out_channels=channel_dim,
+                kernel_size=4,
+                stride=2,
+                padding=1,
             ),
             nn.Tanh(),
         )
@@ -175,7 +181,9 @@ class CDCGAN(object):
         device,
     ):
         self.G = (
-            CondGenerator(num_class, latent_dim, embedding_dim, one_hot_encoding)
+            CondGenerator(
+                num_class, channel_dim, latent_dim, embedding_dim, one_hot_encoding
+            )
             .apply(weights_init)
             .to(device)
         )
@@ -213,12 +221,15 @@ class CDCGAN(object):
                 for images, y in bar:
                     batch_size = images.size(0)
                     # Step 1: Train discriminator
-                    z = torch.rand((batch_size, self.latent_dim)).to(self.device)
+                    z = torch.randn((batch_size, self.latent_dim)).to(self.device)
 
                     real_labels = torch.ones(batch_size)
                     fake_labels = torch.zeros(batch_size)
 
-                    images, y = images.to(self.device), y.to(self.device).long()
+                    images, y = (
+                        images.to(self.device),
+                        y.reshape(-1).to(self.device).long(),
+                    )
 
                     real_labels, fake_labels = real_labels.to(
                         self.device
@@ -284,24 +295,24 @@ class CDCGAN(object):
                 return
         return
 
-    def generate_img(self, number_of_images, class_label):
+    def generate_img(self, number_of_images, class_label, channel_dim):
         samples = (
             self.G(
-                torch.rand((number_of_images, self.latent_dim)).to(self.device),
+                torch.randn((number_of_images, self.latent_dim)).to(self.device),
                 (class_label * torch.ones(number_of_images)).long().to(self.device),
             )
             .detach()
             .cpu()
-            .reshape(-1, 1, 28, 28)
+            .reshape(-1, channel_dim, 28, 28)
         )
         samples = samples * 0.5 + 0.5
         return samples
 
 
 def gradient_penalty(D, real_images, image_labels, fake_images, device):
-    """Computes the gradient penalty loss for WGAN"""
+    """Computes the gradient penalty loss for WGAN."""
     N, C, H, W = real_images.shape
-    alpha = torch.rand((N, 1, 1, 1)).repeat(1, C, H, W).to(device)
+    alpha = torch.randn((N, 1, 1, 1)).repeat(1, C, H, W).to(device)
     # get X_hat
     interpolated_images = real_images * alpha + fake_images * (1 - alpha)
     interpolated_scores = D(interpolated_images, image_labels)
@@ -320,7 +331,9 @@ def gradient_penalty(D, real_images, image_labels, fake_images, device):
 
 
 class CondWGenerator(torch.nn.Module):
-    def __init__(self, num_class, latent_dim, embedding_dim, one_hot_encoding):
+    def __init__(
+        self, num_class, channel_dim, latent_dim, embedding_dim, one_hot_encoding
+    ):
         super().__init__()
         self.num_class = num_class
         self.latent_dim = latent_dim
@@ -365,7 +378,11 @@ class CondWGenerator(torch.nn.Module):
             nn.BatchNorm2d(64),
             nn.ReLU(),
             nn.ConvTranspose2d(
-                in_channels=64, out_channels=1, kernel_size=4, stride=2, padding=1
+                in_channels=64,
+                out_channels=channel_dim,
+                kernel_size=4,
+                stride=2,
+                padding=1,
             ),
             nn.Tanh(),
         )
@@ -479,7 +496,9 @@ class CWDCGAN(object):
         device,
     ):
         self.G = (
-            CondWGenerator(num_class, latent_dim, embedding_dim, one_hot_encoding)
+            CondWGenerator(
+                num_class, channel_dim, latent_dim, embedding_dim, one_hot_encoding
+            )
             .apply(weights_init)
             .to(device)
         )
@@ -517,11 +536,14 @@ class CWDCGAN(object):
                 bar.set_description(f"Epoch {epoch}")
                 for images, y in bar:
                     batch_size = images.size(0)
-                    images, y = images.to(self.device), y.to(self.device).long()
+                    images, y = (
+                        images.to(self.device),
+                        y.to(self.device).reshape(-1).long(),
+                    )
                     # Step 1: Train discriminator with (n_critic) iters
                     for _ in range(self.n_critic):
                         # Generate noise
-                        z = torch.rand((batch_size, self.latent_dim)).to(self.device)
+                        z = torch.randn((batch_size, self.latent_dim)).to(self.device)
 
                         # Compute the BCE Loss using real images
                         real_scores = self.D(images, y)
@@ -578,15 +600,15 @@ class CWDCGAN(object):
                     )
         return
 
-    def generate_img(self, number_of_images, class_label):
+    def generate_img(self, number_of_images, class_label, channel_dim):
         samples = (
             self.G(
-                torch.rand((number_of_images, self.latent_dim)).to(self.device),
+                torch.randn((number_of_images, self.latent_dim)).to(self.device),
                 (class_label * torch.ones(number_of_images)).long().to(self.device),
             )
             .detach()
             .cpu()
-            .reshape(-1, 1, 28, 28)
+            .reshape(-1, channel_dim, 28, 28)
         )
         samples = samples * 0.5 + 0.5
         return samples
