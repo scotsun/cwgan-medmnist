@@ -3,6 +3,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision
 from tqdm import tqdm
 
 
@@ -643,3 +644,78 @@ class CWDCGAN(object):
         )
         samples = samples * 0.5 + 0.5
         return samples
+
+
+class CNN(nn.Module):
+    def __init__(self, channel_dim, num_class, device):
+        super().__init__()
+        self.num_class = num_class
+        self.device = device
+        # download resnet
+        resnet = torchvision.models.resnet50(weights="DEFAULT")
+        resnet.conv1 = nn.Conv2d(
+            channel_dim,
+            64,
+            kernel_size=(7, 7),
+            stride=(2, 2),
+            padding=(3, 3),
+            bias=False,
+        )
+        resnet.fc = nn.Linear(in_features=2048, out_features=num_class, bias=True)
+        self.resnet = resnet.to(device)
+
+    def forward(self, x):
+        return F.softmax(self.resnet(x), dim=1)
+
+    def evaluate(self, dataloader):
+        total_correct = 0
+        total_loss = 0
+        num_samples = len(dataloader.dataset)
+        num_batches = 0
+        criterion = nn.CrossEntropyLoss(reduction="mean")
+        with torch.no_grad():
+            for img_batch, label_batch in dataloader:
+                img_batch = img_batch.to(self.device)
+                label_batch = label_batch.to(self.device).reshape(-1)
+                prob_batch = self(img_batch)
+                # loss
+                total_loss += criterion(prob_batch, label_batch).item()
+                num_batches += 1
+                # num correct
+                total_correct += (prob_batch.argmax(dim=1) == label_batch).sum().item()
+        return total_loss / num_batches, total_correct / num_samples
+
+    def train(self, train_dataloader, valid_dataloader, lr, epochs, verbose_period=1):
+        criterion = nn.CrossEntropyLoss(reduction="mean")
+        optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+        for epoch in range(epochs):
+            total_correct = 0
+            total_loss = 0
+            num_samples = 0
+            num_batches = 0
+            verbose = (epoch % verbose_period) == 0
+            with tqdm(train_dataloader, unit="batch", disable=not verbose) as bar:
+                bar.set_description(f"Epoch {epoch}")
+                for img_batch, label_batch in bar:
+                    img_batch = img_batch.to(self.device)
+                    label_batch = label_batch.to(self.device).reshape(-1)
+                    # forward, backward & optimizer step
+                    self.zero_grad()
+                    prob_batch = self(img_batch)
+                    loss = criterion(prob_batch, label_batch)
+                    loss.backward()
+                    optimizer.step()
+                    # update bar
+                    total_loss += loss.item()
+                    num_batches += 1
+                    total_correct += (
+                        (prob_batch.argmax(dim=1) == label_batch).sum().item()
+                    )
+                    num_samples += img_batch.shape[0]
+                    bar.set_postfix(
+                        ce=float(total_loss / num_batches),
+                        acc=float(total_correct / num_samples),
+                    )
+            valid_loss, valid_acc = self.evaluate(valid_dataloader)
+            print("val_ce={:0.3f}, val_acc={:0.3f}".format(valid_loss, valid_acc))
+        return
