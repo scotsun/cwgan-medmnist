@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torchvision
+from torchvision.models.feature_extraction import create_feature_extractor
 from tqdm import tqdm
 
 
@@ -312,7 +313,7 @@ class CDCGAN(object):
                 return
         return
 
-    def generate_img(self, number_of_images, class_label, channel_dim):
+    def generate_img_sample(self, number_of_images, class_label, channel_dim):
         """Generate images from noise and class label."""
         samples = (
             self.G(
@@ -631,7 +632,7 @@ class CWDCGAN(object):
                     )
         return
 
-    def generate_img(self, number_of_images, class_label, channel_dim):
+    def generate_img_sample(self, number_of_images, class_label, channel_dim):
         """Generate images from noise and class label."""
         samples = (
             self.G(
@@ -719,3 +720,17 @@ class CNN(nn.Module):
             valid_loss, valid_acc = self.evaluate(valid_dataloader)
             print("val_ce={:0.3f}, val_acc={:0.3f}".format(valid_loss, valid_acc))
         return
+
+    def calculate_embeddings(self, dataloader):
+        return_node = {"avgpool": "image_embedding"}
+        cnn_embedding = create_feature_extractor(self.resnet, return_node)
+        total_embedding = torch.zeros(len(dataloader.dataset), 2048)
+        idx_curser = 0
+        for img_batch, _ in dataloader:
+            embedding = cnn_embedding(img_batch)["image_embedding"]
+            embedding = embedding.reshape(-1, 2048).detach()
+        pass
+
+
+def generate_synthetic_images(G: CondGenerator | CondWGenerator, labels):
+    pass
