@@ -23,4 +23,5 @@
 	* embedding vs. one-hot
 	* embedding size
 	* vanilla vs. Wasserstein
+	* latent p(z) clipping
 

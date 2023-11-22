@@ -632,7 +632,9 @@ class CWDCGAN(object):
                     )
         return
 
-    def generate_img_sample(self, number_of_images, class_label, channel_dim):
+    def generate_img_sample(
+        self, number_of_images: int, class_label: int, channel_dim: int
+    ):
         """Generate images from noise and class label."""
         samples = (
             self.G(
@@ -648,7 +650,9 @@ class CWDCGAN(object):
 
 
 class CNN(nn.Module):
-    def __init__(self, channel_dim, num_class, device):
+    """Simple Resnet50 to extract image embedding/features."""
+
+    def __init__(self, channel_dim: int, num_class: int, device: str):
         super().__init__()
         self.num_class = num_class
         self.device = device
@@ -717,8 +721,9 @@ class CNN(nn.Module):
                         ce=float(total_loss / num_batches),
                         acc=float(total_correct / num_samples),
                     )
-            valid_loss, valid_acc = self.evaluate(valid_dataloader)
-            print("val_ce={:0.3f}, val_acc={:0.3f}".format(valid_loss, valid_acc))
+            if verbose:
+                valid_loss, valid_acc = self.evaluate(valid_dataloader)
+                print("val_ce={:0.3f}, val_acc={:0.3f}".format(valid_loss, valid_acc))
         return
 
     def calculate_embeddings(self, dataloader):
@@ -729,8 +734,25 @@ class CNN(nn.Module):
         for img_batch, _ in dataloader:
             embedding = cnn_embedding(img_batch)["image_embedding"]
             embedding = embedding.reshape(-1, 2048).detach()
-        pass
+            total_embedding[idx_curser : (idx_curser + len(img_batch)), :] = embedding
+            idx_curser += len(img_batch)
+        return total_embedding
 
 
-def generate_synthetic_images(G: CondGenerator | CondWGenerator, labels):
-    pass
+def generate_synthetic_images(
+    G: CondGenerator | CondWGenerator,
+    labels: torch.Tensor,
+    channel_dim: int,
+    device: str,
+):
+    number_of_images = len(labels)
+    samples = (
+        G(
+            torch.randn((number_of_images, G.latent_dim)).to(device),
+            labels.long().to(device),
+        )
+        .detach()
+        .cpu()
+        .reshape(-1, channel_dim, 28, 28)
+    )
+    return samples
