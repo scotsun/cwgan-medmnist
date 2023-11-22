@@ -19,13 +19,14 @@
 **2nd meeting (11.22):**
 
 1. Review all progress  
-2. Experiments plan
-	* embedding vs. one-hot
-	* embedding size
-	* vanilla vs. Wasserstein
-	* latent p(z) clipping
+2. Experiments plan (v/w _ oh/e32 _ blood _ 10.pt)
+	* vanilla vs. Wasserstein 10 vs 100
+	* embedding vs. one-hot (output, efficiency) 
+	* embedding size (output, efficiency)
+		4, 8, 32
+	* latent p(z) clipping (images may look good, but what about fid?)
 
-## More efficient way to calculate FID
+## A more efficient way to calculate FID
 Given the formula of FID
 $$
 \mathrm{FID} = 
@@ -39,8 +40,7 @@ Calculating $(\Sigma_r\Sigma_f)^{1/2}$ with standard method provided by `scipy.l
 		For each batch:
 		a. compute
 			mu_fi (mean of batch embeddings), 
-			C_fi,
-			Sigma_fi = <C_fi, C_fi>
+			C_fi
 		b. tr[sqrtm(Sigma_r @ Sigma_fi)] = sum[sqrt(eigval(C_fi @ C_r.T @ C_r @ C_fi.T))]
 		c. compute the batch specific FID
 	3. Compute sample mean
