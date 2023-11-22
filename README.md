@@ -1,5 +1,8 @@
 # 685 project - Evaluate Generative Models for MedMNIST
- 
+
+## write-up
+https://www.overleaf.com/2636841369kygdtjgqmpfz#4f20dd
+
 ## Meeting memo
 **1st meeting (11.3):**
 
