@@ -31,6 +31,7 @@ https://www.overleaf.com/2636841369kygdtjgqmpfz#4f20dd
 
 ## A more efficient way to calculate FID
 Given the formula of FID
+
 $$
 \mathrm{FID} = 
 \| \mu_r - \mu_f \|_2^2 + \mathrm{tr}(\Sigma_r + \Sigma_f - 2(\Sigma_r\Sigma_f)^{1/2})
