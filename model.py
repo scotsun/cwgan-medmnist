@@ -745,6 +745,7 @@ def generate_synthetic_images(
     channel_dim: int,
     device: str,
 ):
+    """Generate synthetic images from a list of labels using given Generator."""
     number_of_images = len(labels)
     samples = (
         G(
