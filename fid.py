@@ -2,27 +2,29 @@
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, ConcatDataset, Dataset
 from model import CNN, CondGenerator, CondWGenerator, generate_synthetic_images
-from torchvision.models.feature_extraction import create_feature_extractor
 
 
-def calculate_embeddings(cnn_embedder, dataloader):
-    """Calculate embeddings of images from a dataloader."""
-    total_embedding = torch.zeros(len(dataloader.dataset), 2048)
-    idx_curser = 0
-    for img_batch, _ in dataloader:
-        embedding = cnn_embedder(img_batch)["image_embedding"]
-        embedding = embedding.reshape(-1, 2048).detach()
-        total_embedding[idx_curser : (idx_curser + len(img_batch)), :] = embedding
-        idx_curser += len(img_batch)
-    return total_embedding
+def get_class_weights(dataloader: DataLoader, num_class: int):
+    """Calculate class weights in a dataloader."""
+    if isinstance(dataloader.dataset, ConcatDataset):
+        class_counts = np.zeros(num_class)
+        datasets = dataloader.dataset.datasets
+        for i in range(len(datasets)):
+            class_counts += np.bincount(datasets[i].labels.reshape(-1))
+        return class_counts / len(dataloader.dataset)
+    elif isinstance(dataloader.dataset, Dataset):
+        class_counts = np.bincount(dataloader.dataset.labels.reshape(-1))
+        return class_counts / len(dataloader.dataset)
+    else:
+        raise TypeError("DataLoader.dataset type error")
 
 
 def fid_handler(
     mu_real: torch.Tensor, C_real: torch.Tensor, embedding_fake: torch.Tensor, m: int
 ):
-    """Calculate Frechet Inception Distance.
+    """Handle to calculate FID.
 
     Let C denotes the normalized re-centered embeddings.
     C = 1/sqrt(m - 1) * (E - mu @ 1)
@@ -36,10 +38,11 @@ def fid_handler(
     # trace of Sigma
     tr_S_r = (C_real**2).sum()
     tr_S_f = (C_fake**2).sum()
+
     # trace of sqrtm(S_r S_f)
-    tr_sqrtm = torch.sum(
-        torch.sqrt(torch.linalg.eigvals(C_fake @ C_real.T @ C_real @ C_fake.T))
-    )
+    M = ((C_fake @ C_real.T) @ C_real) @ C_fake.T
+
+    tr_sqrtm = torch.sum(torch.sqrt(torch.linalg.eigvals(M)))  # TODO: this is biased
     # fid
     fid = d_mu @ d_mu + tr_S_r + tr_S_f - 2 * tr_sqrtm
     return fid
@@ -51,25 +54,32 @@ def fid(
     generator: CondGenerator | CondWGenerator,
     B: int,
     m: int,
-    target_weights: torch.Tensor,
-    class_label: int,
+    unconditional: bool,
+    class_label: int | None,
+    num_class: int,
     channel_dim: int,
     device: str,
 ):
-    # build embedder
-    return_node = {"avgpool": "image_embedding"}
-    cnn_embedder = create_feature_extractor(cnn.resnet, return_node)
+    """Calculate FID."""
     # calculate E_r and its mu and C
-    embedding_real = calculate_embeddings(cnn_embedder, real_dataloader)
-    mu_real = embedding_real.mean(dim=0)
-    C_real = (embedding_real - mu_real) / np.sqrt(len(real_dataloader.dataset))
-    # iterate B times
-    for i in range(B):
-        # TODO: finish labels
-        labels = torch.zeros(m)
-        # generate fake image & calculate embeddings
-        fake_images = generate_synthetic_images(generator, labels, channel_dim, device)
-        embedding_fake = cnn_embedder(fake_images)["image_embedding"]
-        embedding_fake = embedding_fake.reshape(-1, 2048).detach()
-        fid = fid_handler(mu_real, C_real, embedding_fake)
-        print(fid)
+    with torch.no_grad():
+        embedding_real = cnn.calculate_embeddings(real_dataloader)
+        mu_real = embedding_real.mean(dim=0)
+        N = embedding_real.shape[0]
+        C_real = (embedding_real - mu_real) / np.sqrt(N - 1)
+        # iterate B times
+        for i in range(B):
+            if unconditional:
+                target_weights = get_class_weights(real_dataloader, num_class)
+                target_weights = torch.tensor(target_weights)
+                labels = torch.multinomial(target_weights, m, replacement=True)
+            else:
+                labels = class_label * torch.ones(m)
+            # generate fake image & calculate embeddings
+            fake_images = generate_synthetic_images(
+                generator, labels, channel_dim, device
+            )
+            _, embedding_fake = cnn(fake_images)
+            embedding_fake = embedding_fake.reshape(-1, 2048).detach()
+            fid = fid_handler(mu_real, C_real, embedding_fake, m)
+            print("fid =", float(fid.real))
