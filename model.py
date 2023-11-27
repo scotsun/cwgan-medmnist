@@ -3,8 +3,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.utils.data import DataLoader
 import torchvision
-from torchvision.models.feature_extraction import create_feature_extractor
 from tqdm import tqdm
 
 
@@ -650,9 +650,7 @@ class CWDCGAN(object):
 
 
 class CNN(nn.Module):
-    """Simple Resnet50 to extract image embedding/features."""
-
-    def __init__(self, channel_dim: int, num_class: int, device: str):
+    def __init__(self, channel_dim, num_class, device):
         super().__init__()
         self.num_class = num_class
         self.device = device
@@ -666,11 +664,15 @@ class CNN(nn.Module):
             padding=(3, 3),
             bias=False,
         )
-        resnet.fc = nn.Linear(in_features=2048, out_features=num_class, bias=True)
-        self.resnet = resnet.to(device)
+        resnet.fc = nn.Flatten()
+        self.resnet = resnet
+        self.fc = nn.Linear(in_features=2048, out_features=num_class, bias=True)
+        self.to(device)
 
     def forward(self, x):
-        return F.softmax(self.resnet(x), dim=1)
+        embedding = self.resnet(x)
+        p = F.softmax(self.fc(embedding), dim=1)
+        return p, embedding
 
     def evaluate(self, dataloader):
         total_correct = 0
@@ -682,7 +684,7 @@ class CNN(nn.Module):
             for img_batch, label_batch in dataloader:
                 img_batch = img_batch.to(self.device)
                 label_batch = label_batch.to(self.device).reshape(-1)
-                prob_batch = self(img_batch)
+                prob_batch, _ = self(img_batch)
                 # loss
                 total_loss += criterion(prob_batch, label_batch).item()
                 num_batches += 1
@@ -706,7 +708,7 @@ class CNN(nn.Module):
                     label_batch = label_batch.to(self.device).reshape(-1)
                     # forward, backward & optimizer step
                     self.zero_grad()
-                    prob_batch = self(img_batch)
+                    prob_batch, _ = self(img_batch)
                     loss = criterion(prob_batch, label_batch)
                     loss.backward()
                     optimizer.step()
@@ -726,16 +728,19 @@ class CNN(nn.Module):
                 print("val_ce={:0.3f}, val_acc={:0.3f}".format(valid_loss, valid_acc))
         return
 
-    def calculate_embeddings(self, dataloader):
-        return_node = {"avgpool": "image_embedding"}
-        cnn_embedding = create_feature_extractor(self.resnet, return_node)
-        total_embedding = torch.zeros(len(dataloader.dataset), 2048)
+    def calculate_embeddings(self, dataloader: DataLoader):
+        """Calculate embeddings for all images."""
+        total_embedding = torch.zeros(len(dataloader.dataset), 2048).to(self.device)
         idx_curser = 0
-        for img_batch, _ in dataloader:
-            embedding = cnn_embedding(img_batch)["image_embedding"]
-            embedding = embedding.reshape(-1, 2048).detach()
-            total_embedding[idx_curser : (idx_curser + len(img_batch)), :] = embedding
-            idx_curser += len(img_batch)
+        with torch.no_grad():
+            for img_batch, _ in tqdm(dataloader):
+                img_batch = img_batch.to(self.device)
+                _, embedding_batch = self(img_batch)
+                embedding_batch = embedding_batch.reshape(-1, 2048).detach()
+                total_embedding[
+                    idx_curser : (idx_curser + len(img_batch)), :
+                ] = embedding_batch
+                idx_curser += len(img_batch)
         return total_embedding
 
 
@@ -753,7 +758,6 @@ def generate_synthetic_images(
             labels.long().to(device),
         )
         .detach()
-        .cpu()
         .reshape(-1, channel_dim, 28, 28)
     )
     return samples
