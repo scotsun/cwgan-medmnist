@@ -3,7 +3,7 @@
 from torch.utils.data import Dataset
 
 
-class UtilDataset(Dataset):
+class UtilDataset(Dataset):  # replace by TensorDataset
     """A simple Dataset class to store (fake) images."""
 
     def __init__(self, images, labels) -> None:

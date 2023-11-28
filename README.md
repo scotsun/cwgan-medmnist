@@ -29,7 +29,9 @@ https://www.overleaf.com/2636841369kygdtjgqmpfz#4f20dd
 		4, 8, 32
 	* latent p(z) clipping (images may look good, but what about fid?)
 
-## A more efficient way to calculate FID
+## A more efficient way to calculate a 'proxy' of FID
+*Note: this fast algorithm overestimate the FID calculated using a large fake image set. Thus, the two scores are not comparable. However, it can be compared with itself over training.*
+
 Given the formula of FID
 
 $$
