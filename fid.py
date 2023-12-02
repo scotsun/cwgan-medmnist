@@ -1,8 +1,9 @@
 """Functionalities for calculating Frechet Inception Distance (FID)."""
 
 import numpy as np
+from scipy.linalg import sqrtm
 import torch
-from torch.utils.data import DataLoader, ConcatDataset, Dataset
+from torch.utils.data import DataLoader, ConcatDataset, Dataset, TensorDataset
 from model import CNN, CondGenerator, CondWGenerator, generate_synthetic_images
 
 
@@ -19,6 +20,21 @@ def get_class_weights(dataloader: DataLoader, num_class: int):
         return class_counts / len(dataloader.dataset)
     else:
         raise TypeError("DataLoader.dataset type error")
+
+
+def extract_class_k(dataloader: DataLoader, class_k: int):
+    """Extract all data of class from dataloader. Output another dataloader."""
+    img_list, label_list = [], []
+    for img_batch, label_batch in dataloader:
+        argwhere = (label_batch == class_k).view(-1)
+        img_list.append(img_batch[argwhere])
+        label_list.append(label_batch[argwhere])
+    class_k_dataloader = DataLoader(
+        TensorDataset(torch.concat(img_list), torch.concat(label_list)),
+        batch_size=dataloader.batch_size,
+        shuffle=True,
+    )
+    return class_k_dataloader
 
 
 def fid_handler(
@@ -54,15 +70,19 @@ def fid(
     generator: CondGenerator | CondWGenerator,
     B: int,
     m: int,
-    unconditional: bool,
-    class_label: int | None,
     num_class: int,
     channel_dim: int,
     device: str,
+    unconditional: bool = True,
+    class_label: int | None = None,
 ):
     """Calculate FID."""
     # calculate E_r and its mu and C
     with torch.no_grad():
+        if not unconditional:
+            real_dataloader = extract_class_k(
+                dataloader=real_dataloader, class_k=class_label
+            )
         embedding_real = cnn.calculate_embeddings(real_dataloader)
         mu_real = embedding_real.mean(dim=0)
         N = embedding_real.shape[0]
@@ -83,3 +103,49 @@ def fid(
             embedding_fake = embedding_fake.reshape(-1, 2048).detach()
             fid = fid_handler(mu_real, C_real, embedding_fake, m)
             print("fid =", float(fid.real))
+
+
+def fid_base(
+    cnn: CNN,
+    real_dataloader: DataLoader,
+    generator: CondGenerator | CondWGenerator,
+    m: int,
+    num_class: int,
+    channel_dim: int,
+    device: str,
+    unconditional: bool = True,
+    class_label: int | None = None,
+):
+    """Calculate FID."""
+    with torch.no_grad():
+        if not unconditional:
+            real_dataloader = extract_class_k(
+                dataloader=real_dataloader, class_k=class_label
+            )
+        embedding_real = cnn.calculate_embeddings(real_dataloader)
+        mu_real = embedding_real.mean(dim=0).cpu().numpy()
+        sigma_real = embedding_real.T.cov().cpu().numpy()
+
+        # generate fake images & calculate embedding
+        if unconditional:
+            target_weights = get_class_weights(real_dataloader, num_class)
+            target_weights = torch.tensor(target_weights)
+            labels = torch.multinomial(target_weights, m, replacement=True)
+        else:
+            labels = class_label * torch.ones(m)
+        fake_images = generate_synthetic_images(generator, labels, channel_dim, device)
+        _, embedding_fake = cnn(fake_images)
+        embedding_fake = embedding_fake.reshape(-1, 2048).detach()
+
+    # calculate mu, sigma for fake images
+    mu_fake = embedding_fake.mean(dim=0).cpu().numpy()
+    sigma_fake = embedding_fake.T.cov().cpu().numpy()
+
+    # compute fid
+    sigma_prod_sqrt = sqrtm(sigma_real @ sigma_fake).real
+    fid_score = ((mu_real - mu_fake) ** 2).sum() + np.trace(
+        sigma_real + sigma_fake - 2 * sigma_prod_sqrt
+    )
+    if device == "cuda":
+        torch.cuda.empty_cache()
+    return fid_score

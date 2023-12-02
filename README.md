@@ -1,5 +1,7 @@
 # 685 project - Evaluate Generative Models for MedMNIST
 
+## box shared folder for models
+https://duke.app.box.com/folder/237418820952?s=2hs40qz2t23axe8zdtufvidj5c8bkf17&tc=collab-folder-invite-treatment-b
 ## write-up
 https://www.overleaf.com/2636841369kygdtjgqmpfz#4f20dd
 

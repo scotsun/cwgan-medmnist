@@ -39,7 +39,7 @@ class CondGenerator(torch.nn.Module):
 
         self.label_channel = nn.Sequential(
             nn.ConvTranspose2d(
-                in_channels=embedding_dim,
+                in_channels=self.embedding_dim,
                 out_channels=128,
                 kernel_size=3,
                 stride=1,
@@ -116,7 +116,7 @@ class CondDiscriminator(torch.nn.Module):
 
         self.label_channel = nn.Sequential(
             nn.Conv2d(
-                in_channels=embedding_dim,
+                in_channels=self.embedding_dim,
                 out_channels=32,
                 kernel_size=4,
                 stride=2,
@@ -373,7 +373,7 @@ class CondWGenerator(torch.nn.Module):
 
         self.label_channel = nn.Sequential(
             nn.ConvTranspose2d(
-                in_channels=embedding_dim,
+                in_channels=self.embedding_dim,
                 out_channels=128,
                 kernel_size=3,
                 stride=1,
@@ -447,7 +447,7 @@ class CondWDiscriminator(torch.nn.Module):
 
         self.label_channel = nn.Sequential(
             nn.Conv2d(
-                in_channels=embedding_dim,
+                in_channels=self.embedding_dim,
                 out_channels=32,
                 kernel_size=4,
                 stride=2,
