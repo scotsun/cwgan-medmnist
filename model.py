@@ -650,6 +650,11 @@ class CWDCGAN(object):
 
 
 class CNN(nn.Module):
+    """A simple ResNet50 architecture.
+
+    Image embedding can be extracted before the activiation sent to the final fc layer.
+    """
+
     def __init__(self, channel_dim, num_class, device):
         super().__init__()
         self.num_class = num_class
@@ -675,6 +680,7 @@ class CNN(nn.Module):
         return p, embedding
 
     def evaluate(self, dataloader):
+        """Evaluate at a (valid) dataloader."""
         total_correct = 0
         total_loss = 0
         num_samples = len(dataloader.dataset)
@@ -692,9 +698,28 @@ class CNN(nn.Module):
                 total_correct += (prob_batch.argmax(dim=1) == label_batch).sum().item()
         return total_loss / num_batches, total_correct / num_samples
 
-    def train(self, train_dataloader, valid_dataloader, lr, epochs, verbose_period=1):
+    def train(
+        self,
+        train_dataloader,
+        valid_dataloader,
+        lr,
+        epochs,
+        save_best=False,
+        fpath=None,
+        verbose_period=1,
+    ) -> dict[str, list]:
+        """Train with save_best (w.r.t val_acc) option."""
+        history = {
+            "loss": [],
+            "val_loss": [],
+            "acc": [],
+            "val_acc": [],
+        }
         criterion = nn.CrossEntropyLoss(reduction="mean")
         optimizer = torch.optim.Adam(self.parameters(), lr=lr)
+        if save_best:
+            best_acc, best_epoch = 0, 0
+
         for epoch in range(epochs):
             total_correct = 0
             total_loss = 0
@@ -723,10 +748,23 @@ class CNN(nn.Module):
                         ce=float(total_loss / num_batches),
                         acc=float(total_correct / num_samples),
                     )
+
+            valid_loss, valid_acc = self.evaluate(valid_dataloader)
             if verbose:
-                valid_loss, valid_acc = self.evaluate(valid_dataloader)
                 print("val_ce={:0.3f}, val_acc={:0.3f}".format(valid_loss, valid_acc))
-        return
+            if save_best:
+                if valid_acc > best_acc:
+                    best_acc = valid_acc
+                    best_epoch = epoch
+                    print(
+                        f"Saving best model at epoch {best_epoch} with valid acc: {best_acc}"
+                    )
+                    torch.save(self, fpath)
+            history["loss"].append(total_loss / num_batches)
+            history["val_loss"].append(valid_loss)
+            history["acc"].append(total_correct / num_samples)
+            history["val_acc"].append(valid_acc)
+        return history
 
     def calculate_embeddings(self, dataloader: DataLoader):
         """Calculate embeddings for all images."""

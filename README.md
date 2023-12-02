@@ -1,6 +1,6 @@
 # 685 project - Evaluate Generative Models for MedMNIST
 
-## box shared folder for models
+## box shared folder for all saved model checkpoints
 https://duke.app.box.com/folder/237418820952?s=2hs40qz2t23axe8zdtufvidj5c8bkf17&tc=collab-folder-invite-treatment-b
 ## write-up
 https://www.overleaf.com/2636841369kygdtjgqmpfz#4f20dd
@@ -30,6 +30,12 @@ https://www.overleaf.com/2636841369kygdtjgqmpfz#4f20dd
 	* embedding size (output, efficiency)
 		4, 8, 32
 	* latent p(z) clipping (images may look good, but what about fid?)
+
+**3rd-4th meeting (12.1 & 12.4):**
+
+1. Reviewed all progress
+2. Discussed about model results
+3. Drafted report
 
 ## A more efficient way to calculate a 'proxy' of FID
 *Note: this fast algorithm overestimate the FID calculated using a large fake image set. Thus, the two scores are not comparable. However, it can be compared with itself over training.*
