@@ -2,6 +2,8 @@
 
 ## box shared folder for all saved model checkpoints
 https://duke.app.box.com/folder/237418820952?s=2hs40qz2t23axe8zdtufvidj5c8bkf17&tc=collab-folder-invite-treatment-b
+## Colab
+https://colab.research.google.com/drive/1tZj1e67tzmTYbI2lD53fXuu5KpgknP_v#scrollTo=0CJwKsFI1cjV
 ## write-up
 https://www.overleaf.com/2636841369kygdtjgqmpfz#4f20dd
 
