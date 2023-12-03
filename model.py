@@ -766,12 +766,12 @@ class CNN(nn.Module):
             history["val_acc"].append(valid_acc)
         return history
 
-    def calculate_embeddings(self, dataloader: DataLoader):
+    def calculate_embeddings(self, dataloader: DataLoader, verbose: bool = False):
         """Calculate embeddings for all images."""
         total_embedding = torch.zeros(len(dataloader.dataset), 2048).to(self.device)
         idx_curser = 0
         with torch.no_grad():
-            for img_batch, _ in tqdm(dataloader):
+            for img_batch, _ in tqdm(dataloader, disable=not verbose):
                 img_batch = img_batch.to(self.device)
                 _, embedding_batch = self(img_batch)
                 embedding_batch = embedding_batch.reshape(-1, 2048).detach()

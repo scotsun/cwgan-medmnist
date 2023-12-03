@@ -37,6 +37,60 @@ def extract_class_k(dataloader: DataLoader, class_k: int):
     return class_k_dataloader
 
 
+def fid_base(
+    cnn: CNN,
+    real_dataloader: DataLoader,
+    generator: CondGenerator | CondWGenerator,
+    m: int,
+    num_class: int,
+    channel_dim: int,
+    device: str,
+    unconditional: bool = True,
+    class_label: int | None = None,
+    verbose: bool = False,
+):
+    """Calculate FID.
+
+    param: m - sample size for fake images
+    param: verbose - verbosity for calculate embeddings using real_dataloader
+    """
+    with torch.no_grad():
+        if not unconditional:
+            real_dataloader = extract_class_k(
+                dataloader=real_dataloader, class_k=class_label
+            )
+        embedding_real = cnn.calculate_embeddings(real_dataloader, verbose)
+        mu_real = embedding_real.mean(dim=0).cpu().numpy()
+        sigma_real = embedding_real.T.cov().cpu().numpy()
+
+        # generate fake images & calculate embedding
+        if unconditional:
+            target_weights = get_class_weights(real_dataloader, num_class)
+            target_weights = torch.tensor(target_weights)
+            labels = torch.multinomial(target_weights, m, replacement=True)
+        else:
+            labels = class_label * torch.ones(m)
+        fake_images = generate_synthetic_images(generator, labels, channel_dim, device)
+        _, embedding_fake = cnn(fake_images)
+        embedding_fake = embedding_fake.reshape(-1, 2048).detach()
+
+    # calculate mu, sigma for fake images
+    mu_fake = embedding_fake.mean(dim=0).cpu().numpy()
+    sigma_fake = embedding_fake.T.cov().cpu().numpy()
+
+    # compute fid
+    sigma_prod_sqrt = sqrtm(sigma_real @ sigma_fake).real
+    fid_score = ((mu_real - mu_fake) ** 2).sum() + np.trace(
+        sigma_real + sigma_fake - 2 * sigma_prod_sqrt
+    )
+    if device == "cuda":
+        torch.cuda.empty_cache()
+    return fid_score
+
+
+# -- to calculate FID alternative to using scipy.linalg.sqrtm
+
+
 def fid_handler(
     mu_real: torch.Tensor, C_real: torch.Tensor, embedding_fake: torch.Tensor, m: int
 ):
@@ -75,6 +129,7 @@ def fid(
     device: str,
     unconditional: bool = True,
     class_label: int | None = None,
+    verbose: bool = False,
 ):
     """Calculate FID."""
     # calculate E_r and its mu and C
@@ -83,7 +138,7 @@ def fid(
             real_dataloader = extract_class_k(
                 dataloader=real_dataloader, class_k=class_label
             )
-        embedding_real = cnn.calculate_embeddings(real_dataloader)
+        embedding_real = cnn.calculate_embeddings(real_dataloader, verbose)
         mu_real = embedding_real.mean(dim=0)
         N = embedding_real.shape[0]
         C_real = (embedding_real - mu_real) / np.sqrt(N - 1)
@@ -103,49 +158,6 @@ def fid(
             embedding_fake = embedding_fake.reshape(-1, 2048).detach()
             fid = fid_handler(mu_real, C_real, embedding_fake, m)
             print("fid =", float(fid.real))
-
-
-def fid_base(
-    cnn: CNN,
-    real_dataloader: DataLoader,
-    generator: CondGenerator | CondWGenerator,
-    m: int,
-    num_class: int,
-    channel_dim: int,
-    device: str,
-    unconditional: bool = True,
-    class_label: int | None = None,
-):
-    """Calculate FID."""
-    with torch.no_grad():
-        if not unconditional:
-            real_dataloader = extract_class_k(
-                dataloader=real_dataloader, class_k=class_label
-            )
-        embedding_real = cnn.calculate_embeddings(real_dataloader)
-        mu_real = embedding_real.mean(dim=0).cpu().numpy()
-        sigma_real = embedding_real.T.cov().cpu().numpy()
-
-        # generate fake images & calculate embedding
-        if unconditional:
-            target_weights = get_class_weights(real_dataloader, num_class)
-            target_weights = torch.tensor(target_weights)
-            labels = torch.multinomial(target_weights, m, replacement=True)
-        else:
-            labels = class_label * torch.ones(m)
-        fake_images = generate_synthetic_images(generator, labels, channel_dim, device)
-        _, embedding_fake = cnn(fake_images)
-        embedding_fake = embedding_fake.reshape(-1, 2048).detach()
-
-    # calculate mu, sigma for fake images
-    mu_fake = embedding_fake.mean(dim=0).cpu().numpy()
-    sigma_fake = embedding_fake.T.cov().cpu().numpy()
-
-    # compute fid
-    sigma_prod_sqrt = sqrtm(sigma_real @ sigma_fake).real
-    fid_score = ((mu_real - mu_fake) ** 2).sum() + np.trace(
-        sigma_real + sigma_fake - 2 * sigma_prod_sqrt
-    )
     if device == "cuda":
         torch.cuda.empty_cache()
-    return fid_score
+    return
