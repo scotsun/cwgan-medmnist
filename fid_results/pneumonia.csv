@@ -1,0 +1,17 @@
+gan,dataset,embedding,epoch,class0,class1,unconditional_fid
+vanilla,Pneumonia,4,10,465.79333,345.90231,436.386261
+vanilla,Pneumonia,4,100,343.71426,187.15773,152.406601
+vanilla,Pneumonia,8,10,377.0652,300.3662,317.8555
+vanilla,Pneumonia,8,100,363.1098,193.7195,156.3132
+vanilla,Pneumonia,32,10,464.4158,342.2878,469.5382
+vanilla,Pneumonia,32,100,362.1058,198.1261,160.0558
+vanilla,Pneumonia,0,10,399.4565,235.9035,292.4463
+vanilla,Pneumonia,0,100,353.9711,191.9373,163.9879
+Wasserstein,Pneumonia,4,10,354.7648,180.0953,172.8561
+Wasserstein,Pneumonia,4,100,346.8377,186.3972,142.8006
+Wasserstein,Pneumonia,8,10,364.2573,180.9001,171.9904
+Wasserstein,Pneumonia,8,100,351.9634,177.2508,137.1493
+Wasserstein,Pneumonia,32,10,382.5536,180.5835,177.4198
+Wasserstein,Pneumonia,32,100,327.7515,176.4132,131.4204
+Wasserstein,Pneumonia,0,10,354.8218,177.0789,172.974
+Wasserstein,Pneumonia,0,100,341.4758,175.5474,133.644
