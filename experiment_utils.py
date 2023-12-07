@@ -58,6 +58,7 @@ def compare_real_fake_by_class(
     n_samples=16,
     grid_nrow=8,
 ):
+    """Plot fake vs real through stratification by class."""
     # fake at top; real at bottom
     n_classes = len(label_dict)
     img_batch, label_batch = next(iter(real_dataloader))

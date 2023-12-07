@@ -788,7 +788,10 @@ def generate_synthetic_images(
     channel_dim: int,
     device: str,
 ):
-    """Generate synthetic images from a list of labels using given Generator."""
+    """Generate synthetic images from a list of labels using given Generator.
+
+    note: the images are in the transformed values between -1 and 1.
+    """
     number_of_images = len(labels)
     samples = (
         G(

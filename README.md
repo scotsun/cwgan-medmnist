@@ -1,8 +1,34 @@
 # 685 project - Evaluate Generative Models for MedMNIST
 
+# Explanation on Code
+
+## `model.py`
+Note: All GAN models in the code follow the revised architecture mentioned in the report.
+
+`weights_init` intializes parameters in a GAN model.
+
+`CondGenerator`, `CondDiscriminator` are the build blocks of `CDCGAN`, which is in the vanilla framework.
+
+`CondWGenerator`, `CondWDiscriminator` are the build blocks of `CWDCGAN`, which is in the Wasserstein framework. `gradient_penalty` is used to calculate the penalty loss during the training of `CWDCGAN`.
+
+`CNN` "internalizes" a ResNet50 model and can return image embedding in the forward pass. `CNN.calculate_embedding` is used to compute the embeddings for the entire dataloader.
+
+`generate_synthetic_images` generate fake images (in the transformed formate where all values are between -1 and 1) for a given array of labels. If we want to visualize them, we have do the inverse transformation: `img=img*0.5+0.5`.
+
+## `fid.py`
+`fid_base` is the core function to calculate FID score given a well-trained CNN, a Generator, and training data. It can calculate both the uncondtional score and a condtional score for a specified class label.  
+`get_class_weight` is a utility function to calculate the proportion of each category given a dataloader.  
+`extract_k_class` is a utility function to extract all the data of class `k` and store them in another dataloader to output.
+
+## `experiment_utils.py`
+`visualize_history` visualize the training history of model.  
+`compare_real_fake_by_class` compare real and fake images through a stratification by class labels.
+
+# Appendix
 ## box shared folder for all saved model checkpoints
 https://duke.app.box.com/folder/237418820952?s=2hs40qz2t23axe8zdtufvidj5c8bkf17&tc=collab-folder-invite-treatment-b
-## Colab
+## Colab code vignette
+The are a few examples in the notebook to show how different classes and methods work.
 https://colab.research.google.com/drive/1tZj1e67tzmTYbI2lD53fXuu5KpgknP_v#scrollTo=0CJwKsFI1cjV
 ## write-up
 https://www.overleaf.com/2636841369kygdtjgqmpfz#4f20dd
@@ -25,19 +51,23 @@ https://www.overleaf.com/2636841369kygdtjgqmpfz#4f20dd
 
 **2nd meeting (11.22):**
 
-1. Review all progress  
-2. Experiments plan (v/w _ oh/e32 _ blood _ 10.pt)
-	* vanilla vs. Wasserstein 10 vs 100
+1. Reviewed all progress  
+2. Planned Experiments (v/w _ oh/e32 _ blood _ 10.pt)
+	* vanilla vs. Wasserstein 10 vs 100 epochs
 	* embedding vs. one-hot (output, efficiency) 
-	* embedding size (output, efficiency)
-		4, 8, 32
-	* latent p(z) clipping (images may look good, but what about fid?)
+	* embedding size (output, efficiency) 4, 8, 32
 
 **3rd-4th meeting (12.1 & 12.4):**
 
 1. Reviewed all progress
 2. Discussed about model results
 3. Drafted report
+
+**5th-6th meeting (12.6 & 12.7):**
+
+1. Reviewed all progress
+2. Discussed about visualizations of results
+3. Continued on report
 
 ## A more efficient way to calculate a 'proxy' of FID
 *Note: this fast algorithm overestimate the FID calculated using a large fake image set. Thus, the two scores are not comparable. However, it can be compared with itself over training.*

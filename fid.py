@@ -49,8 +49,9 @@ def fid_base(
     class_label: int | None = None,
     verbose: bool = False,
 ):
-    """Calculate FID.
+    """Calculate uncondtional/condtional FID.
 
+    param: unconditional - a boolean: if true `class_label` can be None; else must provide `class_label`
     param: m - sample size for fake images
     param: verbose - verbosity for calculate embeddings using real_dataloader
     """
@@ -88,7 +89,7 @@ def fid_base(
     return fid_score
 
 
-# -- to calculate FID alternative to using scipy.linalg.sqrtm
+# -- to calculate FID without relying on scipy.linalg.sqrtm
 
 
 def fid_handler(
