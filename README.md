@@ -13,7 +13,7 @@ Note: All GAN models in the code follow the revised architecture mentioned in th
 
 `CNN` "internalizes" a ResNet50 model and can return image embedding in the forward pass. `CNN.calculate_embedding` is used to compute the embeddings for the entire dataloader.
 
-`generate_synthetic_images` generate fake images (in the transformed formate where all values are between -1 and 1) for a given array of labels. If we want to visualize them, we have do the inverse transformation: `img=img*0.5+0.5`.
+`generate_synthetic_images` generates fake images (in the transformed formate where all values are between -1 and 1) for a given array of labels. If we want to visualize them, we have do the inverse transformation: `img=img*0.5+0.5`.
 
 ## `fid.py`
 `fid_base` is the core function to calculate FID score given a well-trained CNN, a Generator, and training data. It can calculate both the uncondtional score and a condtional score for a specified class label.  
@@ -21,8 +21,8 @@ Note: All GAN models in the code follow the revised architecture mentioned in th
 `extract_k_class` is a utility function to extract all the data of class `k` and store them in another dataloader to output.
 
 ## `experiment_utils.py`
-`visualize_history` visualize the training history of model.  
-`compare_real_fake_by_class` compare real and fake images through a stratification by class labels.
+`visualize_history` visualizes the training history of model.  
+`compare_real_fake_by_class` compares real and fake images through a stratification by class labels.
 
 # Appendix
 ## box shared folder for all saved model checkpoints
