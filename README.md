@@ -20,6 +20,8 @@ Note: All GAN models in the code follow the revised architecture mentioned in th
 `get_class_weight` is a utility function to calculate the proportion of each category given a dataloader.  
 `extract_k_class` is a utility function to extract all the data of class `k` and store them in another dataloader to output.
 
+`fid` & `fid_handler` are used to calculate FID without using `scipy.linalg.sqrtm`. This is not covered by the report as this approach tend to overestimate the results. Detailed information is given at the bottom.
+
 ## `experiment_utils.py`
 `visualize_history` visualizes the training history of model.  
 `compare_real_fake_by_class` compares real and fake images through a stratification by class labels.
@@ -69,7 +71,7 @@ https://www.overleaf.com/2636841369kygdtjgqmpfz#4f20dd
 2. Discussed about visualizations of results
 3. Continued on report
 
-## A more efficient way to calculate a 'proxy' of FID
+## A more efficient way to calculate a of FID
 *Note: this fast algorithm overestimate the FID calculated using a large fake image set. Thus, the two scores are not comparable. However, it can be compared with itself over training.*
 
 Given the formula of FID
