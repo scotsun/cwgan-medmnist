@@ -54,11 +54,10 @@ Calculating $(\Sigma_r\Sigma_f)^{1/2}$ with standard method provided by `scipy.l
 
 ## box shared folder for all saved model checkpoints
 https://duke.app.box.com/folder/237418820952?s=2hs40qz2t23axe8zdtufvidj5c8bkf17&tc=collab-folder-invite-treatment-b
+
 ## Colab code vignette
 The are a few examples in the notebook to show how different classes and methods work.
 https://colab.research.google.com/drive/1tZj1e67tzmTYbI2lD53fXuu5KpgknP_v#scrollTo=0CJwKsFI1cjV
-## write-up
-https://www.overleaf.com/2636841369kygdtjgqmpfz#4f20dd
 
 ## Meeting memo
 **1st meeting (11.3):**
