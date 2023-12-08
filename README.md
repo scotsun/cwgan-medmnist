@@ -26,6 +26,9 @@ Note: All GAN models in the code follow the revised architecture mentioned in th
 `visualize_history` visualizes the training history of model.  
 `compare_real_fake_by_class` compares real and fake images through a stratification by class labels.
 
+## `*ipynb` files
+The notebook files are code for experiments, FID calculations, and result visualization.
+
 # Appendix
 ## Fast FID
 *Note: this fast algorithm overestimate the FID calculated using a smaller fake image set*
