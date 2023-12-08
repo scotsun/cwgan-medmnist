@@ -1,4 +1,4 @@
-# 685 project - Evaluate Generative Models for MedMNIST
+# Evaluate Generative Models for MedMNIST
 
 # Explanation on Code
 
@@ -58,41 +58,5 @@ https://duke.app.box.com/folder/237418820952?s=2hs40qz2t23axe8zdtufvidj5c8bkf17&
 ## Colab code vignette
 The are a few examples in the notebook to show how different classes and methods work.
 https://colab.research.google.com/drive/1tZj1e67tzmTYbI2lD53fXuu5KpgknP_v#scrollTo=0CJwKsFI1cjV
-
-## Meeting memo
-**1st meeting (11.3):**
-
-0. Created a shared GitHub repo
-
-1. Selected three datasets:  
-	PneumoniaMNIST 	(5k+, G)  
-	OrganAMNIST 	(50k+, G)  
-	BloodMNIST		(10k+, C)
-
-2. Planned a timeline for the project:  
-	11.17 GAN,  
-	11.24 Resnet,  
-	12.1 Run through experiments and make sure the processes are all correct; fine-tune the hyper-parameters  
-	12.8 final report due
-
-**2nd meeting (11.22):**
-
-1. Reviewed all progress  
-2. Planned Experiments (v/w _ oh/e32 _ blood _ 10.pt)
-	* vanilla vs. Wasserstein 10 vs 100 epochs
-	* embedding vs. one-hot (output, efficiency) 
-	* embedding size (output, efficiency) 4, 8, 32
-
-**3rd-4th meeting (12.1 & 12.4):**
-
-1. Reviewed all progress
-2. Discussed about model results
-3. Drafted report
-
-**5th-6th meeting (12.6 & 12.7):**
-
-1. Reviewed all progress
-2. Discussed about visualizations of results
-3. Continued on report
 
 
