@@ -1,4 +1,4 @@
-# Evaluate Generative Models for MedMNIST
+# Evaluate cGAN for MedMNIST
 
 # Explanation on Code
 
